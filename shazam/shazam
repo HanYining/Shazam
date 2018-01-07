@@ -1,0 +1,75 @@
+#!/usr/bin/env python
+import songanalyzer
+import dbconstruct
+import query
+import argparse
+
+
+# a user interface program design
+parser = argparse.ArgumentParser(
+    description="A user interface of the shazam program.")
+
+# mainly support 3 kind of actions for now
+# 1. digest music directory, 2. insert a single song
+# 3. identify a giving snippet
+# so three corresponding subpaser is created and maintained
+subparsers = parser.add_subparsers(dest='subcommand')
+
+parser_digest = subparsers.add_parser("digest")
+parser_digest.add_argument("directory")
+
+parser_insert = subparsers.add_parser("insert")
+parser_insert.add_argument("--title", "-t",
+                           help="name of song you are inserting!")
+parser_insert.add_argument("--artist", "-a",
+                           help="artist of the song you are inserting!")
+parser_insert.add_argument("file", help="The WAV format music file")
+
+parser_identify = subparsers.add_parser("identify")
+parser_identify.add_argument("song", help="the file you need to match")
+
+args = parser.parse_args()
+
+if args.subcommand == "digest":
+
+    window_len = 10
+    shift_step = 1
+    freq_proportion = 0.2
+
+    dbconstruct.create_table()
+
+    songanalyzer.digest_music(
+        "/Users/yinhan/{0}/*.wav".format(args.directory),
+        "hamming", window_len=window_len, shift_step=shift_step,
+        freq_portion=freq_proportion)
+
+if args.subcommand == "insert":
+
+    window_len = 10
+    shift_step = 1
+    freq_proportion = 0.2
+
+    akafingerprint = songanalyzer.readin_singlesong("/Users/yinhan/testing/" + args.file,
+                                                    "hamming", window_len, shift_step, freq_proportion)
+    songanalyzer.insert_singlesong(akafingerprint, args.title, window_len, shift_step)
+
+if args.subcommand == "identify":
+
+    # using the readin snippet to match existing window data.
+    # Since these parameters have to be the same across all the files
+    # it might be better to save those configurations in
+    # some sort of a configuration file in the final submission
+    # but here it is just a first try.
+
+    window_len = 10
+    shift_step = 1
+    freq_portion = 0.2
+    K = 5
+
+    # set up the query object from the falconn package first
+    center, query_obj = query.setup_lsh()
+    # here I need to read in a single file or a matching file
+
+    snippet = songanalyzer.readin_singlesong("/Users/yinhan/testing/{0}".format(args.song), "hamming", window_len, shift_step, freq_portion)
+
+    query.find_best_match(query_obj, snippet, center, K)
